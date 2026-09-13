@@ -13,8 +13,20 @@ from wireshark_mcp.engines.detector import find_tshark, is_tshark_available
 from wireshark_mcp.engines.scapy_engine import ScapyEngine
 from wireshark_mcp.engines.tshark_engine import TsharkEngine
 
-# Initialize FastMCP application
-mcp = FastMCP("wireshark-mcp")
+# Initialize FastMCP application with comprehensive server instructions
+SERVER_INSTRUCTIONS = """
+Wireshark MCP is an AI-powered packet analysis and network forensics engine.
+When a user asks what this MCP server is or what it can do, always provide a complete overview
+including the 6 core prompt categories with specific copy-pasteable example queries:
+1. When You DO NOT Have a PCAP Yet (Live Sniffing, Sample Downloads, Test Traffic Generation)
+2. Security Incident Response & Threat Hunting (Triage, Credentials, DNS Tunneling, C2 Beaconing, Port Scans)
+3. TLS, SSL & Cryptographic Forensics (JA3 Fingerprints, SNI Extraction, Cipher Audits)
+4. Network Diagnostics & Protocol Investigation (Overview, Top Talkers, Stream Reassembly, Display Filters)
+5. Direct Upload & Base64 Ingestion (All-in-one analysis, step-by-step triage)
+6. Wireshark Syntax & Filter Assistance (Display filter generation)
+"""
+
+mcp = FastMCP("wireshark-mcp", instructions=SERVER_INSTRUCTIONS)
 
 # Directory for storing uploaded PCAP files
 UPLOAD_DIR = os.path.join(os.environ.get("TEMP", "."), "wireshark_mcp_uploads")
@@ -23,10 +35,10 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @mcp.tool()
 def get_engine_status() -> Dict[str, Any]:
-    """Check the status of packet analysis engines (TShark & Scapy).
+    """Check the status of packet analysis engines (TShark & Scapy) and get example queries.
     
     Returns whether the official Wireshark tshark binary is discovered and available,
-    the binary path, and supported analysis features.
+    the binary path, supported analysis capabilities, and the full categorized prompt guide.
     """
     tshark_path = find_tshark()
     return {
@@ -43,7 +55,43 @@ def get_engine_status() -> Dict[str, Any]:
             "Port Scan & TCP SYN Anomaly Detection",
             "C2 Beaconing Timing & Low-Jitter Flow Analysis",
             "TCP & UDP Stream Reassembly",
+            "Base64 Direct Upload & Automated Triage",
         ],
+        "example_queries_by_category": {
+            "1. When You DO NOT Have a PCAP Yet": [
+                "Capture 50 live packets from my local network interface and analyze the traffic.",
+                "Start a 10-second packet sniff on my machine and tell me what external servers my computer is talking to.",
+                "Generate a realistic test PCAP containing HTTP basic auth, a port scan, and DNS queries, then save it to disk.",
+                "Download a sample malware or HTTP capture from the official Wireshark repository and inspect it."
+            ],
+            "2. Security Incident Response & Threat Hunting": [
+                "Perform an end-to-end incident triage on <path_to_file.pcap> and give me an executive summary of threats found.",
+                "Scan <path_to_file.pcap> for any cleartext passwords, FTP logins, HTTP Basic Auth headers, or exposed API keys.",
+                "Analyze DNS traffic in <path_to_file.pcap> for data exfiltration or high-entropy tunneling queries.",
+                "Check <path_to_file.pcap> for persistent, periodic beaconing or low-jitter C2 heartbeat flows.",
+                "Did any host perform a port scan or TCP SYN sweep in <path_to_file.pcap>?"
+            ],
+            "3. TLS, SSL & Cryptographic Forensics": [
+                "Extract all TLS JA3 client fingerprints from <path_to_file.pcap> and group them by client application.",
+                "List all TLS Server Name Indication (SNI) hostnames requested in <path_to_file.pcap>.",
+                "What TLS versions and cipher suites are being used in <path_to_file.pcap>?"
+            ],
+            "4. Network Diagnostics & Protocol Investigation": [
+                "Give me a protocol breakdown and total packet count for <path_to_file.pcap>.",
+                "Who are the top IP talkers in <path_to_file.pcap> by byte volume?",
+                "Follow and reconstruct TCP stream #0 in <path_to_file.pcap> and show me the full conversation payload.",
+                "Apply the Wireshark filter http.request.method == 'POST' to <path_to_file.pcap>."
+            ],
+            "5. Direct Upload & Base64 Ingestion": [
+                "Here is the base64-encoded PCAP data: <base64_string>. Upload it and run a full threat analysis.",
+                "Upload this base64 capture with filename incident.pcap: <base64_string>."
+            ],
+            "6. Wireshark Syntax & Filter Assistance": [
+                "How do I write a Wireshark display filter to find all DNS queries for .xyz domains?",
+                "What is the display filter syntax to find TCP retransmissions or reset packets?",
+                "Generate a filter for TLS 1.2 ClientHello packets that do not use SNI."
+            ]
+        }
     }
 
 
