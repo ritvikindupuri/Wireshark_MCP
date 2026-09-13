@@ -1,6 +1,6 @@
-# Wireshark MCP - AI-Native Packet Analysis & Threat Forensics Engine
+# Wireshark MCP - AI-Powered Network Forensics
 
-> **Bridge packet captures directly to LLMs for automated network incident response, deep packet inspection, TLS fingerprinting, and DNS threat hunting.**
+> **Automated packet triage, TLS fingerprinting, and threat hunting for LLMs.**
 
 ---
 

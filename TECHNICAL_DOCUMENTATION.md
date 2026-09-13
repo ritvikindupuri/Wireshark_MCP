@@ -1,4 +1,4 @@
-# Technical Documentation: Wireshark & PCAP Threat Triage MCP Server
+# Technical Documentation: Wireshark MCP
 
 **Author:** Ritvik Indupuri  
 **Date:** September 13, 2026  
