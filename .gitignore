@@ -25,6 +25,7 @@ tls*.pcap
 tls*.pcapng
 dns*.pcap
 dns*.pcapng
+dns*.pcapng.gz
 rsa*.pcap
 sample_control*.pcap
 dis_voice*.pcap
