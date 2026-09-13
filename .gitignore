@@ -1,0 +1,40 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Pytest
+.pytest_cache/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Temporary generated test files
+temp_pcaps/
+real_*.cap
+real_*.pcap
+real_*.pcap.gz
+live_*.pcap
+realistic_scenario.pcap
+wireshark_*.pcap
+http*.pcap
+http*.pcapng
+tls*.pcap
+tls*.pcapng
+dns*.pcap
+dns*.pcapng
+rsa*.pcap
+sample_control*.pcap
+dis_voice*.pcap
+snakeoil*.pcap
+udt-*.pcapng.gz
+wpa-*.pcap.gz
+coap-*.pcap
+cose_*.pcap
+cbor*.pcap
+bt_*.pcapng
+arp.pcap
+c1222*.pcap
+comments.pcapng
