@@ -123,46 +123,121 @@ The following diagram illustrates the complete end-to-end architecture of the Wi
 
 ## Setup & Installation
 
-### 1. Navigate to the Project Directory
-```powershell
-cd C:\Users\ritvi\.gemini\antigravity\scratch\wireshark-mcp
+Follow these step-by-step instructions. This guide assumes the only tool currently installed on your system is **Git**.
+
+### Step 1: Clone the Repository
+
+Open your terminal (PowerShell, Command Prompt, or Terminal) and clone the repository:
+
+```bash
+git clone https://github.com/ritvikindupuri/Wireshark_MCP.git
+cd Wireshark_MCP
 ```
 
-### 2. Install Dependencies
+---
+
+### Step 2: Install Python (Version 3.10 or Higher)
+
+If Python is not already installed on your system, install it using your platform's package manager:
+
+#### On Windows:
+Open PowerShell and run:
 ```powershell
+winget install Python.Python.3.12
+```
+*Note: If installing manually from [python.org](https://www.python.org/downloads/), ensure you check the box labeled "Add python.exe to PATH" during installation.*
+
+#### On macOS:
+Install Python via Homebrew:
+```bash
+brew install python@3.12
+```
+
+#### On Linux (Ubuntu / Debian):
+```bash
+sudo apt update && sudo apt install -y python3 python3-pip python3-venv
+```
+
+Verify your installation:
+```bash
+python --version
+```
+*(On macOS/Linux, use `python3 --version` if `python` points to an older system version).*
+
+---
+
+### Step 3: Create and Activate a Virtual Environment
+
+Isolate project dependencies inside a dedicated virtual environment:
+
+#### On Windows (PowerShell):
+```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+```
+*Note: If PowerShell restricts script execution, run `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` in your session, then re-run the activation script.*
+
+#### On macOS / Linux:
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+---
+
+### Step 4: Install Dependencies
+
+Install all required Python libraries (mcp, scapy, pydantic, and pytest):
+
+```bash
 pip install -r requirements.txt
 ```
 
-### 3. Verify the Test Suite
-Run the automated test suite against synthetic multi-vector threat captures:
+---
+
+### Step 5: (Optional) Install Wireshark / TShark Engine
+
+Wireshark is **optional**. If skipped, the server automatically runs in pure-Python Scapy mode with all threat hunting, DNS entropy, TLS JA3, credential hunting, and stream reassembly features active.
+
+To unlock native Wireshark display filter queries (`apply_display_filter`) and full protocol hierarchy trees (`io,phs`):
+
+#### On Windows:
 ```powershell
+winget install WiresharkFoundation.Wireshark
+```
+
+#### On macOS:
+```bash
+brew install wireshark
+```
+
+#### On Linux (Ubuntu / Debian):
+```bash
+sudo apt install -y tshark
+```
+
+---
+
+### Step 6: Verify the Installation
+
+Run the automated test suite against synthetic multi-vector captures:
+
+```bash
 python -m pytest -v
 ```
 
-### 4. Configure in Antigravity / Claude Desktop
+All 15 tests should pass.
+
+---
+
+### Step 7: Configure in Your AI Assistant
+
+Determine the absolute path to your Python executable:
+- Windows (PowerShell): `(Get-Command python).Source` or `(Get-Item .\venv\Scripts\python.exe).FullName`
+- macOS / Linux: `which python` or `readlink -f venv/bin/python`
 
 #### For Antigravity:
-Open `C:\Users\ritvi\.gemini\config\mcp_config.json` and add:
-
-```json
-{
-  "mcpServers": {
-    "wireshark": {
-      "command": "C:\\Python314\\python.exe",
-      "args": [
-        "-m",
-        "wireshark_mcp.server"
-      ],
-      "env": {
-        "PYTHONPATH": "C:\\Users\\ritvi\\.gemini\\antigravity\\scratch\\wireshark-mcp"
-      }
-    }
-  }
-}
-```
-
-#### For Claude Desktop:
-Open `%APPDATA%\Claude\claude_desktop_config.json` and add:
+Open `~/.gemini/config/mcp_config.json` (on Windows: `C:\Users\<username>\.gemini\config\mcp_config.json`) and add:
 
 ```json
 {
@@ -173,7 +248,27 @@ Open `%APPDATA%\Claude\claude_desktop_config.json` and add:
         "-m",
         "wireshark_mcp.server"
       ],
-      "cwd": "C:\\Users\\ritvi\\.gemini\\antigravity\\scratch\\wireshark-mcp"
+      "env": {
+        "PYTHONPATH": "<ABSOLUTE_PATH_TO_Wireshark_MCP_DIRECTORY>"
+      }
+    }
+  }
+}
+```
+
+#### For Claude Desktop:
+Open `%APPDATA%\Claude\claude_desktop_config.json` (on macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`) and add:
+
+```json
+{
+  "mcpServers": {
+    "wireshark": {
+      "command": "python",
+      "args": [
+        "-m",
+        "wireshark_mcp.server"
+      ],
+      "cwd": "<ABSOLUTE_PATH_TO_Wireshark_MCP_DIRECTORY>"
     }
   }
 }
