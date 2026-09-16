@@ -190,6 +190,21 @@ def find_tshark() -> Optional[str]:
     return None
 ```
 
+#### Execution Mode Comparison: TShark CLI vs. Scapy Standalone
+
+| Capability | Full Wireshark (TShark Engine) | Pure-Python (Scapy Engine) |
+| :--- | :--- | :--- |
+| **System Prerequisites** | Wireshark or tshark binary installed | Python 3.10+ only (zero external dependencies) |
+| **Native Display Filters** | Full Wireshark syntax supported via `-Y` | Requires TShark (returns descriptive guidance) |
+| **Protocol Hierarchy** | Supported (`tshark -qz io,phs`) | Supported (Layer 2-7 Scapy breakdown) |
+| **DNS Shannon Entropy & DGA** | Supported (Python analytical engine) | Supported (Python analytical engine) |
+| **TLS SNI & JA3 Fingerprints** | Supported (Python analytical engine) | Supported (Python analytical engine) |
+| **Credential Hunting & Heuristics**| Supported (HTTP/FTP/Telnet/POST) | Supported (HTTP/FTP/Telnet/POST) |
+| **Port Scan & C2 Beaconing** | Supported | Supported |
+| **Stream Reassembly** | Supported (Dual: TShark & Scapy) | Supported (Native Scapy reassembly) |
+| **Memory Safety Profile** | Dependent on host Wireshark C dissectors | 100% memory-safe Python execution |
+| **Container / Serverless Fit** | Heavy (requires multi-MB OS packages) | Extremely lightweight and portable |
+
 ---
 
 ### 4.2 Protocol Breakdown & Capture Metadata Engine

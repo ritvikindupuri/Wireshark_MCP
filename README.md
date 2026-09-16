@@ -37,6 +37,47 @@ Instead of manually navigating Wireshark desktop GUIs, crafting complex display 
 
 ---
 
+## Execution Modes: Full Wireshark (TShark) vs. Pure-Python (Scapy)
+
+Wireshark MCP is architected to operate under two distinct execution profiles depending on host environment capabilities:
+
+### Mode 1: Full Wireshark Available (TShark Engine Enabled)
+
+When Wireshark or the `tshark` CLI binary is installed on the host (or specified via the `TSHARK_PATH` environment variable), the server unlocks full integration with the native Wireshark dissection ecosystem.
+
+- **Arbitrary Display Filters:** Executes native Wireshark display filter queries (`apply_display_filter`) using Wireshark syntax (for example, `http.response.code >= 400`, `tcp.analysis.retransmission`, or `tls.handshake.type == 1`).
+- **Comprehensive Protocol Hierarchy:** Generates native Wireshark protocol tree statistics (`tshark -qz io,phs`) covering thousands of proprietary, industrial, and legacy protocols.
+- **Native Stream Following:** Leverages Wireshark's internal reassembly engine (`tshark -qz follow,...`) alongside Scapy reassembly.
+- **Ideal Deployment:** Forensic analyst workstations, dedicated security incident response jump-boxes, and development environments where Wireshark desktop or CLI is pre-installed.
+
+### Mode 2: Pure-Python Engine (Scapy Standalone Mode)
+
+When Wireshark or `tshark` is not installed on the system, the server automatically operates in pure-Python Scapy mode with zero degraded security analytical capability for core threat hunting workflows.
+
+- **Zero External Dependencies:** Requires only Python and the packages listed in `requirements.txt`. No system installers, winpcap/npcap drivers, or administrator privileges required.
+- **Memory Safety:** 100% Python-native packet parsing eliminates exposure to C-level binary memory corruption or buffer overflow vulnerabilities that historically affect legacy protocol dissectors.
+- **Full Threat Hunting Suite Active:** DNS Shannon entropy calculations, DGA detection, TLS SNI extraction, JA3 client fingerprinting with RFC 8701 GREASE stripping, credential extraction (HTTP Basic Auth, FTP, Telnet, POST secrets), port scan detection, C2 beaconing analysis, and stream reassembly function completely natively.
+- **Ideal Deployment:** Minimal Docker containers, Kubernetes pods, AWS Lambda or cloud serverless environments, CI/CD security audit pipelines, and locked-down enterprise hosts without software installation rights.
+
+### Feature Comparison Matrix
+
+| Feature / Capability | Full Wireshark (TShark) Mode | Pure-Python (Scapy) Mode |
+| :--- | :--- | :--- |
+| **System Prerequisites** | Wireshark or tshark in PATH / env | Python 3.10+ only (zero system installs) |
+| **Native Display Filters (`apply_display_filter`)** | Supported (full Wireshark syntax) | Requires TShark (returns guidance message) |
+| **Protocol Hierarchy Statistics** | Supported (tshark `-qz io,phs`) | Supported (Layer 2-7 Scapy breakdown) |
+| **DNS Shannon Entropy & DGA Detection** | Supported (Python forensic engine) | Supported (Python forensic engine) |
+| **TLS SNI Extraction & JA3 Fingerprinting** | Supported (Python forensic engine) | Supported (Python forensic engine) |
+| **Cleartext Credential Hunting** | Supported (HTTP/FTP/Telnet/POST) | Supported (HTTP/FTP/Telnet/POST) |
+| **TCP SYN Port Scan Detection** | Supported | Supported |
+| **Periodic C2 Beaconing Analysis** | Supported (low-jitter timing analyzer)| Supported (low-jitter timing analyzer)|
+| **TCP / UDP Stream Reassembly** | Supported (Dual: TShark & Scapy) | Supported (Native Scapy reassembly) |
+| **Base64 Direct Upload & Triage** | Supported | Supported |
+| **C-Level Binary Exploit Immunity** | Dependent on host Wireshark version | 100% memory-safe Python execution |
+| **Container & Cloud Portability** | Requires multi-MB Wireshark packages | Lightweight, instant container startup |
+
+---
+
 ## System Architecture
 
 The following diagram illustrates the complete end-to-end architecture of the Wireshark MCP system, showing how AI assistants, protocol engines, forensic analyzers, and storage layers interact:
