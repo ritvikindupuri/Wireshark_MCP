@@ -46,59 +46,9 @@ The Wireshark MCP system is structured as a layered, modular micro-service commu
 
 ### System Architecture Diagram
 
-```mermaid
-graph TD
-    subgraph ClientTier["1. Client & Interface Tier"]
-        Antigravity["Antigravity IDE (Gemini Engine)"]
-        ClaudeDesktop["Claude Desktop Application"]
-        MCPInspector["MCP Inspector Web Debugger"]
-        SOAR["Automated SOAR / Python Pipeline"]
-    end
-
-    subgraph TransportTier["Transport & Protocol Tier"]
-        StdioHandler["JSON-RPC 2.0 Stdio Handler"]
-        FastMCPServer["FastMCP Application Controller (server.py)"]
-    end
-
-    subgraph RoutingTier["Engine Routing Tier"]
-        Detector["Environment & Binary Detector (detector.py)"]
-        TSharkRouter["TShark CLI Wrapper (tshark_engine.py)"]
-        ScapyRouter["Scapy Pure-Python Core (scapy_engine.py)"]
-    end
-
-    subgraph ForensicTier["Forensic Analysis Engines"]
-        DNSMod["DNS Analyzer & Shannon Entropy (dns.py)"]
-        TLSMod["TLS Dissector & JA3 Fingerprinter (tls.py)"]
-        HeuristicMod["Threat & Credential Hunter (heuristics.py)"]
-        StreamMod["TCP/UDP Stream Reassembler (streams.py)"]
-        UploadMod["Ingestion & Sandbox Sanitizer (server.py)"]
-    end
-
-    subgraph StorageTier["Data & File System Tier"]
-        DiskCaptures["Disk PCAP / PCAPNG Files"]
-        UploadSandbox["Secure Upload Sandbox (TEMP/wireshark_mcp_uploads)"]
-    end
-
-    ClientTier -->|JSON-RPC Messages| StdioHandler
-    StdioHandler --> FastMCPServer
-    FastMCPServer --> Detector
-    Detector -->|If tshark discovered| TSharkRouter
-    Detector -->|Pure Python fallback| ScapyRouter
-
-    FastMCPServer --> DNSMod
-    FastMCPServer --> TLSMod
-    FastMCPServer --> HeuristicMod
-    FastMCPServer --> StreamMod
-    FastMCPServer --> UploadMod
-
-    UploadMod --> UploadSandbox
-    TSharkRouter --> DiskCaptures
-    TSharkRouter --> UploadSandbox
-    ScapyRouter --> DiskCaptures
-    ScapyRouter --> UploadSandbox
-```
-
 <div align="center">
+  <img src="assets/architecture.png" alt="Wireshark MCP - Network Forensics Architecture" width="900" />
+  <br>
   <b>Figure 1: Wireshark MCP Comprehensive System Architecture</b>
 </div>
 
@@ -106,11 +56,21 @@ graph TD
 
 ### System Component Breakdown
 
-1. **Client & Interface Tier:** Any standard MCP-compliant AI assistant or developer tooling connects to the system via JSON-RPC 2.0.
-2. **Transport & Protocol Tier:** Handles bidirectional communication, tool discovery schemas, request validation, and response serialization.
-3. **Engine Routing Tier:** Automatically inspects the runtime environment (TSHARK_PATH, system PATH, standard OS directories) to select the optimal dissection engine.
-4. **Forensic Analysis Engines:** Domain-specific analytical modules that execute algorithmic packet analysis without relying on third-party cloud APIs.
-5. **Data & File System Tier:** Manages read-only packet inspection on disk and isolated, sanitized temporary file storage for base64 uploads.
+1. **Stage 1 - Security Analyst / AI Client:** The analyst or automated workflow initiates natural-language investigations through an AI client (Google Gemini in Antigravity, Claude Desktop, Cursor, or MCP Inspector). The client transmits JSON-RPC `tools/call` requests over stdio and receives structured forensic evidence for synthesis.
+2. **Stage 2 - FastMCP Server:** The server core (`server.py`) acts as the MCP application controller over stdio transport. It hosts 10 typed MCP tools, validates incoming arguments, manages execution lifecycles, routes requests to appropriate analytical engines, and packages results into structured JSON objects.
+3. **Stage 3 - PCAP Sources:** Capture files enter the system via two ingestion mechanisms:
+   - **Local File Paths:** Absolute paths to existing `.pcap`, `.pcapng`, or `.cap` captures on the filesystem.
+   - **Base64 Ingestion:** Raw binary bytes uploaded directly over MCP, written to a sandboxed directory (`TEMP/wireshark_mcp_uploads`) with strict 50 MB limits and path traversal filename sanitization.
+4. **Stage 4 - Packet Analysis Pipeline:** The capture is dissected through three concurrent/specialized subsystems:
+   - **Scapy Core (Always Available):** Python-native parsing engine providing capture overview metadata, Layer 2-7 packet decoding, and IP/TCP/UDP bidirectional conversation tracking.
+   - **TShark / Wireshark (Optional Engine):** System CLI wrapper providing native Wireshark display filter evaluation (`-Y`) and comprehensive protocol hierarchy trees (`io,phs`).
+   - **Forensic Analyzers:** High-signal security analysis engines:
+     - *DNS:* Shannon entropy calculation, DGA detection, tunneling exfiltration checks, and NXDOMAIN ratios.
+     - *TLS:* Unencrypted ClientHello parsing, SNI hostname extraction, and RFC 8701 GREASE-stripped JA3 client hashing.
+     - *Threat Hunt:* Automated pattern matching for cleartext credentials (HTTP Basic Auth, FTP, Telnet, POST parameters), TCP SYN sweeps, and periodic low-jitter C2 beaconing.
+     - *Streams:* Full-duplex TCP/UDP conversational stream reassembly with directional indicators.
+   - *Automated Pipeline (`analyze_uploaded_pcap`):* Sequential all-in-one analysis pipeline (`Upload -> overview -> conversations -> threat scan -> DNS -> TLS`).
+5. **Stage 5 - Structured JSON Evidence & Return:** All analysis outputs are structured into normalized JSON response objects (Overview, Conversations, Filtered packets, DNS/TLS findings, Threat indicators, and Streams), which travel back through the MCP stdio channel to Stage 1.
 
 ---
 

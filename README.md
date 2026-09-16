@@ -80,78 +80,31 @@ When Wireshark or `tshark` is not installed on the system, the server automatica
 
 ## System Architecture
 
-The following diagram illustrates the complete end-to-end architecture of the Wireshark MCP system, showing how AI assistants, protocol engines, forensic analyzers, and storage layers interact:
-
-```mermaid
-graph TD
-    subgraph ClientLayer["1. AI Client & User Interface Layer"]
-        Gemini["Google Gemini (Antigravity IDE)"]
-        Claude["Anthropic Claude (Desktop / API)"]
-        Inspector["MCP Inspector (Web UI)"]
-        CustomAgent["Custom SOC Automation / SOAR"]
-    end
-
-    subgraph ProtocolLayer["2. Model Context Protocol (MCP) Interface"]
-        StdioTransport["Stdio Transport (JSON-RPC 2.0)"]
-        ServerCore["FastMCP Server Router (wireshark_mcp.server)"]
-    end
-
-    subgraph EngineRouter["3. Engine Routing & Execution Layer"]
-        Detector["Binary Detector (find_tshark)"]
-        TSharkEngine["TShark CLI Engine (Native Wireshark Filters)"]
-        ScapyEngine["Scapy Python Engine (Memory-Safe Fallback)"]
-    end
-
-    subgraph Analyzers["4. Forensic & Security Analyzers"]
-        DNSAnalyzer["DNS Forensics & Shannon Entropy Analyzer"]
-        TLSAnalyzer["TLS SNI & JA3 Fingerprint Extractor"]
-        ThreatHunter["Threat & Credential Hunter (HTTP/FTP/SYN/C2)"]
-        StreamReassembler["TCP/UDP Conversation Stream Reassembler"]
-        UploadManager["PCAP Ingestion & Sanitization Manager"]
-    end
-
-    subgraph DataLayer["5. Data & Storage Layer"]
-        LocalPCAP["Local PCAP / PCAPNG Files"]
-        UploadStorage["Sandboxed Upload Storage (TEMP/wireshark_mcp_uploads)"]
-    end
-
-    ClientLayer -->|JSON-RPC Requests| StdioTransport
-    StdioTransport --> ServerCore
-    ServerCore --> Detector
-    Detector -->|If tshark in PATH/env| TSharkEngine
-    Detector -->|Native / Fallback| ScapyEngine
-    
-    ServerCore --> DNSAnalyzer
-    ServerCore --> TLSAnalyzer
-    ServerCore --> ThreatHunter
-    ServerCore --> StreamReassembler
-    ServerCore --> UploadManager
-
-    UploadManager --> UploadStorage
-    TSharkEngine --> LocalPCAP
-    TSharkEngine --> UploadStorage
-    ScapyEngine --> LocalPCAP
-    ScapyEngine --> UploadStorage
-```
+The following diagram illustrates the complete end-to-end architecture of the Wireshark MCP system, showing how the AI client, FastMCP server, PCAP sources, packet analysis pipeline, and structured JSON evidence interact:
 
 <div align="center">
-  <b>Figure 1: Wireshark MCP End-to-End System Architecture</b>
+  <img src="assets/architecture.png" alt="Wireshark MCP - Network Forensics Architecture" width="900" />
+  <br>
+  <b>Figure 1: Wireshark MCP - Network Forensics Architecture</b>
 </div>
 
 ---
 
 ### Flow-by-Flow Explanation of the Architecture
 
-1. **Client Request Initiation (Layer 1):** The user or security engineer submits a natural language query (e.g., "Audit this PCAP for credential leaks and DNS tunneling") through their AI assistant (Google Gemini in Antigravity, Claude Desktop, or custom Python SOAR script).
-2. **MCP JSON-RPC Handshake (Layer 2):** The AI client sends a standard JSON-RPC tools/call message over standard input/output (stdio) to the FastMCP server core.
-3. **Engine Routing (Layer 3):** The Binary Detector determines the execution engine. If native Wireshark filters (-Y) are requested and tshark is discovered, it routes to TSharkEngine; otherwise, it utilizes the native ScapyEngine.
-4. **Deep Forensic Inspection (Layer 4):**
-   - The **DNS Analyzer** calculates mathematical Shannon entropy ($H = -\sum p_i \log_2 p_i$) on domain strings and checks NXDOMAIN ratios.
-   - The **TLS Analyzer** extracts unencrypted ClientHello fields (SNI, ciphers, curves) and generates MD5 JA3 hashes.
-   - The **Threat Hunter** runs regex scanners across raw payload layers to extract HTTP Basic Auth, FTP credentials, SYN flood anomalies, and beaconing intervals.
-   - The **Stream Reassembler** sequences packet TCP payloads into readable text transcripts.
-5. **Data & Storage Access (Layer 5):** The analyzers read raw bytes from local .pcap files or sandboxed temporary files ingested via upload_pcap.
-6. **Structured Response Return:** The server packages the findings into clean, structured JSON and sends it back via JSON-RPC to the LLM for synthesis into a final human report.
+1. **Stage 1 - Security Analyst / AI Client:** The investigation begins when an analyst submits a natural-language query through an AI interface (Google Gemini in Antigravity, Claude Desktop, or MCP Inspector). The client issues standardized MCP tool calls and ultimately receives structured forensic findings.
+2. **Stage 2 - FastMCP Server:** Operating over standard input/output (stdio) transport, the FastMCP server hosts 10 specialized MCP tools. It validates incoming parameters, enforces execution timeouts, routes calls to the appropriate engines, and marshals tool responses into JSON results.
+3. **Stage 3 - PCAP Sources:** Capture data enters the system through two distinct pathways: direct local file paths on disk (.pcap, .pcapng, .cap), or Base64 binary uploads directed to sandboxed session storage (`TEMP/wireshark_mcp_uploads`). Uploads are protected by a strict 50 MB size ceiling and filename sanitization against path traversal.
+4. **Stage 4 - Packet Analysis Pipeline:** The capture file is processed through three complementary analysis branches:
+   - **Scapy Core (Always Available):** Parses packet metadata, duration, start/end timestamps, protocol distribution, and bidirectional IP/TCP/UDP conversations in pure, memory-safe Python.
+   - **TShark / Wireshark (Optional Engine):** If the binary is discovered on the host system, it provides native Wireshark display filter evaluation (`apply_display_filter`) and comprehensive protocol hierarchy statistics (`io,phs`).
+   - **Forensic Analyzers:** Specialized analytical engines inspect packet layers for security anomalies:
+     - **DNS:** Computes Shannon entropy, flags high-entropy data exfiltration tunneling, DGA domains, and NXDOMAIN spikes.
+     - **TLS:** Extracts unencrypted Server Name Indication (SNI) hostnames and computes MD5 JA3 client hashes with RFC 8701 GREASE stripping.
+     - **Threat Hunt:** Scans raw payloads for cleartext credentials (HTTP Basic Auth, FTP, Telnet, POST secrets), TCP SYN port scans, and periodic C2 beaconing timing.
+     - **Streams:** Reassembles full-duplex TCP/UDP conversational streams into readable payload transcripts.
+   - **Automated Ingestion Pipeline (`analyze_uploaded_pcap`):** For uploaded captures, this automated chain runs end-to-end in sequence: `Upload -> overview -> conversations -> threat scan -> DNS -> TLS`.
+5. **Stage 5 - Structured JSON Evidence & Loop Back:** The analysis results are compiled into categorized, typed JSON evidence objects (Overview, Conversations, Filtered packets, DNS/TLS findings, Threat indicators, and Streams). This evidence is returned through the MCP stdio channel back to Stage 1, where the AI assistant synthesizes it into a comprehensive root-cause forensic report for the analyst.
 
 ---
 
